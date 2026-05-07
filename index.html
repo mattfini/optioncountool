@@ -181,7 +181,7 @@ tr:hover td{background:var(--sand)}
         <div class="tags-wrap" id="alloc-stores-tags"></div>
       </div>
       <div>
-        <div class="info-section-title">📦 Stock by Size</div>
+        <div class="info-section-title">Avg. Actual Reorder Point</div>
         <div class="tags-wrap" id="stock-size-tags"></div>
       </div>
     </div>
@@ -454,15 +454,13 @@ function buildInfoPanel(opt) {
   allocDiv.innerHTML = rangedStores.size === 0
     ? '<span style="color:var(--text-muted);font-size:.82rem">No stores currently allocated</span>'
     : [...rangedStores].map(s => `<span class="tag tag-store">${s}</span>`).join('');
-  document.getElementById('stock-size-tags').innerHTML = rows.map(r => {
+  const sizeRows = rows.map(r => {
     const avg = calcAvgActualReorder(r);
-    const dateStr = formatAvailDate(r.availDate);
-    return `<div style="width:100%;display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:2px 0">
-      <span class="tag ${r.stk === 0 ? 'tag-stk-zero' : 'tag-stk'}">${r.sz} — ${r.stk} warehouse units</span>
-      ${avg !== null ? `<span style="font-size:.72rem;color:var(--text-muted)">Avg. actual reorder point: ${avg}</span>` : ''}
-      <span style="font-size:.72rem;color:var(--text-muted)">${dateStr}</span>
-    </div>`;
-  }).join('');
+    if (avg === null) return '';
+    return `<span class="tag tag-stk">${r.sz} — ${avg}</span>`;
+  }).filter(Boolean).join('');
+  document.getElementById('stock-size-tags').innerHTML = sizeRows ||
+    '<span style="color:var(--text-muted);font-size:.82rem">No reorder point data</span>';
 }
 
 function calcAvgActualReorder(row) {
