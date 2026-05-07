@@ -793,8 +793,9 @@ function processXlsxFile(file) {
       const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1 });
-      if (rawRows.length < 2) { showToast('File appears empty', 'error'); return; }
-      const headers = rawRows[0];
+      if (rawRows.length < 3) { showToast('File appears empty', 'error'); return; }
+      // Row 0 is group-label row (Range / Proposed / Actual); row 1 has real column headers
+      const headers = rawRows[1];
 
       const wqskuIdx = headers.indexOf('Warehouse Qty (SKU)');
       const availDateIdx = headers.indexOf('Available in Warehouse Date');
@@ -809,7 +810,7 @@ function processXlsxFile(file) {
       const hasActual = headers.length > actualStart;
 
       const variants = [];
-      for (let i = 1; i < rawRows.length; i++) {
+      for (let i = 2; i < rawRows.length; i++) {
         const r = rawRows[i];
         if (!r[0]) continue;
         const ranging = {}, proposedReorder = {}, actualReorder = {};
