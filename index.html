@@ -198,7 +198,7 @@ tr:hover td{background:var(--sand)}
 <div class="card">
   <div class="card-title"><span class="step-badge">3</span> Reason for Amendment</div>
   <div class="select-wrapper">
-    <select id="sel-reason">
+    <select id="sel-reason" onchange="onReasonChange()">
       <option value="">— Select Reason —</option>
       <option>Range gap identified</option>
       <option>Slow seller</option>
@@ -207,6 +207,10 @@ tr:hover td{background:var(--sand)}
       <option>Customer request</option>
       <option>Other</option>
     </select>
+  </div>
+  <div id="other-reason-wrap" style="display:none;margin-top:8px">
+    <input type="text" id="other-reason-text" maxlength="50" placeholder="Please specify…" oninput="updateOtherCounter()">
+    <div id="other-reason-counter" style="font-size:.72rem;color:var(--text-muted);text-align:right;margin-top:3px">0/50</div>
   </div>
 </div>
 
@@ -436,7 +440,7 @@ function buildSizeGrid(opt) {
     const el = document.createElement('div');
     el.className = 'size-pill' + (row.stk === 0 ? ' zero-stock' : '');
     el.dataset.size = row.sz;
-    el.innerHTML = `${row.sz} <span class="stk">${row.stk} units</span>`;
+    el.innerHTML = `${row.sz} <span class="stk">${row.stk} warehouse units</span>`;
     el.onclick = () => toggleSize(row.sz, el);
     grid.appendChild(el);
   });
@@ -444,14 +448,38 @@ function buildSizeGrid(opt) {
 
 function buildInfoPanel(opt) {
   const rows = getVariants().filter(v => v.opt === opt);
-  const storeSet = new Set();
-  rows.forEach(r => Object.keys(r.s || {}).forEach(s => storeSet.add(s)));
+  const rangedStores = new Set();
+  rows.forEach(r => Object.keys(r.s || {}).forEach(s => rangedStores.add(s)));
   const allocDiv = document.getElementById('alloc-stores-tags');
-  allocDiv.innerHTML = storeSet.size === 0
+  allocDiv.innerHTML = rangedStores.size === 0
     ? '<span style="color:var(--text-muted);font-size:.82rem">No stores currently allocated</span>'
-    : [...storeSet].map(s => `<span class="tag tag-store">${s}</span>`).join('');
-  document.getElementById('stock-size-tags').innerHTML = rows.map(r =>
-    `<span class="tag ${r.stk === 0 ? 'tag-stk-zero' : 'tag-stk'}">${r.sz} — ${r.stk}</span>`).join('');
+    : [...rangedStores].map(s => `<span class="tag tag-store">${s}</span>`).join('');
+  document.getElementById('stock-size-tags').innerHTML = rows.map(r => {
+    const avg = calcAvgActualReorder(r);
+    const dateStr = formatAvailDate(r.availDate);
+    return `<div style="width:100%;display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:2px 0">
+      <span class="tag ${r.stk === 0 ? 'tag-stk-zero' : 'tag-stk'}">${r.sz} — ${r.stk} warehouse units</span>
+      ${avg !== null ? `<span style="font-size:.72rem;color:var(--text-muted)">Avg. actual reorder point: ${avg}</span>` : ''}
+      <span style="font-size:.72rem;color:var(--text-muted)">${dateStr}</span>
+    </div>`;
+  }).join('');
+}
+
+function calcAvgActualReorder(row) {
+  const vals = Object.values(row.actualReorder || {}).filter(v => v > 0);
+  if (!vals.length) return null;
+  return (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1);
+}
+
+function formatAvailDate(raw) {
+  if (raw == null || raw === '' || String(raw).toUpperCase() === 'NA') return 'In warehouse';
+  if (typeof raw === 'number') {
+    const d = new Date(Math.round((raw - 25569) * 86400 * 1000));
+    return d.toLocaleDateString('en-GB');
+  }
+  const d = new Date(raw);
+  if (!isNaN(d.getTime())) return d.toLocaleDateString('en-GB');
+  return String(raw);
 }
 
 function toggleSize(sz, el) {
@@ -484,16 +512,45 @@ function toggleAllStores() {
   });
 }
 
+// ── Reason helpers ──
+function onReasonChange() {
+  const val = document.getElementById('sel-reason').value;
+  const wrap = document.getElementById('other-reason-wrap');
+  if (val === 'Other') {
+    wrap.style.display = 'block';
+  } else {
+    wrap.style.display = 'none';
+    document.getElementById('other-reason-text').value = '';
+    document.getElementById('other-reason-counter').textContent = '0/50';
+  }
+}
+
+function updateOtherCounter() {
+  const len = document.getElementById('other-reason-text').value.length;
+  document.getElementById('other-reason-counter').textContent = `${len}/50`;
+}
+
+function getEffectiveReason() {
+  const r = document.getElementById('sel-reason').value;
+  if (r !== 'Other') return r;
+  const t = document.getElementById('other-reason-text').value.trim();
+  return t ? `Other: ${t}` : 'Other';
+}
+
 // ── Add to request ──
 function addToRequest() {
   const dept = document.getElementById('sel-dept').value;
   const cat = document.getElementById('sel-cat').value;
   const opt = document.getElementById('sel-opt').value;
-  const reason = document.getElementById('sel-reason').value;
+  const reasonSel = document.getElementById('sel-reason').value;
+  const reason = getEffectiveReason();
   if (!opt) { showToast('Please select an option', 'error'); return; }
   if (!wholeOption && selectedSizes.size === 0) { showToast('Please select at least one size', 'error'); return; }
   if (selectedStores.size === 0) { showToast('Please select at least one store', 'error'); return; }
-  if (!reason) { showToast('Please select a reason', 'error'); return; }
+  if (!reasonSel) { showToast('Please select a reason', 'error'); return; }
+  if (reasonSel === 'Other' && !document.getElementById('other-reason-text').value.trim()) {
+    showToast('Please describe the reason', 'error'); return;
+  }
 
   const rows = getVariants().filter(v => v.opt === opt);
   const sizesToUse = wholeOption ? rows.map(r => r.sz) : [...selectedSizes];
@@ -514,6 +571,9 @@ function addToRequest() {
   document.getElementById('whole-toggle').classList.remove('active');
   document.querySelectorAll('.store-cb').forEach(el => el.classList.remove('selected'));
   document.getElementById('sel-reason').value = '';
+  document.getElementById('other-reason-wrap').style.display = 'none';
+  document.getElementById('other-reason-text').value = '';
+  document.getElementById('other-reason-counter').textContent = '0/50';
 }
 
 function removeFromRequest(id) {
@@ -737,18 +797,40 @@ function processXlsxFile(file) {
       const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1 });
       if (rawRows.length < 2) { showToast('File appears empty', 'error'); return; }
       const headers = rawRows[0];
-      const storeStartIdx = headers.indexOf('London');
-      if (storeStartIdx < 0) { showToast('Could not find store columns', 'error'); return; }
-      const newStores = headers.slice(storeStartIdx).filter(Boolean);
+
+      const wqskuIdx = headers.indexOf('Warehouse Qty (SKU)');
+      const availDateIdx = headers.indexOf('Available in Warehouse Date');
+      const londonIdx = headers.indexOf('London');
+      if (londonIdx < 0) { showToast('Could not find store columns', 'error'); return; }
+
+      const STORE_NAMES = ["London","Bath","Bristol","Brighton","Leeds","Cambridge","Poole","Cardiff","Edinburgh","St Ives","Holt","Falmouth","St Agnes","Southwold","Exeter","Hawksfield"];
+      const NS = STORE_NAMES.length;
+      const rangingStart = londonIdx;
+      const proposedStart = londonIdx + NS;
+      const actualStart = londonIdx + NS * 2;
+      const hasActual = headers.length > actualStart;
+
       const variants = [];
       for (let i = 1; i < rawRows.length; i++) {
         const r = rawRows[i];
         if (!r[0]) continue;
-        const stores = {};
-        newStores.forEach((s, idx) => { const v = r[storeStartIdx + idx]; if (v != null && v !== '' && Number(v) > 0) stores[s] = Number(v); });
-        variants.push({ vc: String(r[0]), pc: String(r[1]||''), dep: String(r[2]||''), cat: String(r[3]||''), opt: String(r[4]||''), sz: String(r[5]||''), stk: typeof r[6]==='number'?r[6]:(parseInt(r[6])||0), s: stores });
+        const ranging = {}, proposedReorder = {}, actualReorder = {};
+        STORE_NAMES.forEach((s, idx) => {
+          const rv = r[rangingStart + idx];
+          if (rv != null && rv !== '' && Number(rv) > 0) ranging[s] = Number(rv);
+          const pv = r[proposedStart + idx];
+          if (pv != null && pv !== '' && Number(pv) > 0) proposedReorder[s] = Number(pv);
+          if (hasActual) {
+            const av = r[actualStart + idx];
+            if (av != null && av !== '' && Number(av) > 0) actualReorder[s] = Number(av);
+          }
+        });
+        const stk = wqskuIdx >= 0 ? (typeof r[wqskuIdx] === 'number' ? r[wqskuIdx] : (parseInt(r[wqskuIdx]) || 0)) : 0;
+        const availDate = availDateIdx >= 0 ? (r[availDateIdx] ?? null) : null;
+        variants.push({ vc: String(r[0]), pc: String(r[1]||''), dep: String(r[2]||''), cat: String(r[3]||''), opt: String(r[4]||''), sz: String(r[5]||''), stk, availDate, s: ranging, ranging, proposedReorder, actualReorder });
       }
-      appData = { stores: newStores, variants };
+
+      appData = { stores: STORE_NAMES, variants };
       localStorage.setItem('alloc_product_data', JSON.stringify(appData));
       buildStorePills(); populateDepts();
       document.getElementById('sel-cat').innerHTML = '<option value="">— Select Category —</option>'; document.getElementById('sel-cat').disabled = true;
