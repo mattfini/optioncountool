@@ -794,20 +794,23 @@ function processXlsxFile(file) {
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rawRows = XLSX.utils.sheet_to_json(ws, { header: 1 });
       if (rawRows.length < 3) { showToast('File appears empty', 'error'); return; }
-      // Row 0 is group-label row (Range / Proposed / Actual); row 1 has real column headers
+      // Row 0: group-label row (Range repeated / Proposed Reorder Points repeated / Actual Reorder Points repeated)
+      // Row 1: column headers (Variant Code … London … London … London Store Mins …)
+      const groupRow = rawRows[0];
       const headers = rawRows[1];
 
       const wqskuIdx = headers.indexOf('Warehouse Qty (SKU)');
       const availDateIdx = headers.indexOf('Available in Warehouse Date');
-      const londonIdx = headers.indexOf('London');
-      if (londonIdx < 0) { showToast('Could not find store columns', 'error'); return; }
+
+      // Use the group-label row to locate each cluster start directly
+      const rangingStart = groupRow.indexOf('Range');
+      const proposedStart = groupRow.indexOf('Proposed Reorder Points');
+      const actualStart = groupRow.findIndex(v => v && String(v).startsWith('Actual Reorder'));
+      const hasActual = actualStart >= 0;
+
+      if (rangingStart < 0) { showToast('Could not find store columns', 'error'); return; }
 
       const STORE_NAMES = ["London","Bath","Bristol","Brighton","Leeds","Cambridge","Poole","Cardiff","Edinburgh","St Ives","Holt","Falmouth","St Agnes","Southwold","Exeter","Hawksfield"];
-      const NS = STORE_NAMES.length;
-      const rangingStart = londonIdx;
-      const proposedStart = londonIdx + NS;
-      const actualStart = londonIdx + NS * 2;
-      const hasActual = headers.length > actualStart;
 
       const variants = [];
       for (let i = 2; i < rawRows.length; i++) {
