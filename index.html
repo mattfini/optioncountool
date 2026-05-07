@@ -345,20 +345,25 @@ let wholeOption = false;
 let allStoresSelected = false;
 
 // ── Init ──
-function init() {
-  loadLocalData();
-  buildStorePills();
-  populateDepts();
+async function init() {
   loadRequestFromStorage();
   renderRequestList();
   checkConnection();
+  await loadProductData();
+  buildStorePills();
+  populateDepts();
 }
 
-function loadLocalData() {
+async function loadProductData() {
   try {
-    const saved = localStorage.getItem('alloc_product_data');
-    if (saved) { appData = JSON.parse(saved); return; }
-  } catch(e) {}
+    const rows = await sbFetch('product_data?select=stores,variants&order=uploaded_at.desc&limit=1');
+    if (rows && rows.length > 0 && rows[0].variants) {
+      appData = { stores: rows[0].stores, variants: rows[0].variants };
+      return;
+    }
+  } catch(e) {
+    console.warn('Could not load product data from Supabase, using embedded data:', e);
+  }
   appData = { stores: EMBEDDED_STORES, variants: EMBEDDED_VARIANTS };
 }
 
@@ -788,7 +793,7 @@ function processXlsxFile(file) {
   const statusEl = document.getElementById('upload-status');
   statusEl.textContent = 'Parsing…';
   const reader = new FileReader();
-  reader.onload = function(e) {
+  reader.onload = async function(e) {
     try {
       const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
       const ws = wb.Sheets[wb.SheetNames[0]];
@@ -832,13 +837,18 @@ function processXlsxFile(file) {
         variants.push({ vc: String(r[0]), pc: String(r[1]||''), dep: String(r[2]||''), cat: String(r[3]||''), opt: String(r[4]||''), sz: String(r[5]||''), stk, availDate, s: ranging, ranging, proposedReorder, actualReorder });
       }
 
+      statusEl.textContent = 'Saving to database…';
+      await sbFetch('product_data', {
+        method: 'POST',
+        prefer: 'resolution=merge-duplicates',
+        body: JSON.stringify({ id: 1, uploaded_at: new Date().toISOString(), stores: STORE_NAMES, variants })
+      });
       appData = { stores: STORE_NAMES, variants };
-      localStorage.setItem('alloc_product_data', JSON.stringify(appData));
       buildStorePills(); populateDepts();
       document.getElementById('sel-cat').innerHTML = '<option value="">— Select Category —</option>'; document.getElementById('sel-cat').disabled = true;
       document.getElementById('sel-opt').innerHTML = '<option value="">— Select Option —</option>'; document.getElementById('sel-opt').disabled = true;
       document.getElementById('size-section').classList.add('hidden'); document.getElementById('info-panel-wrap').classList.add('hidden');
-      statusEl.textContent = `✓ Loaded ${variants.length.toLocaleString()} variants`;
+      statusEl.textContent = `✓ Loaded ${variants.length.toLocaleString()} variants — live for all users`;
       showToast(`Loaded ${variants.length.toLocaleString()} variants`, 'success');
     } catch(err) { statusEl.textContent = ''; showToast('Parse error: ' + err.message, 'error'); }
   };
