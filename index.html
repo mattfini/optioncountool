@@ -491,7 +491,7 @@ function getNextDeliveryDate(rows) {
       ? new Date(Math.round((d - 25569) * 86400 * 1000))
       : new Date(d))
     .filter(d => !isNaN(d.getTime()));
-  if (!parsed.length) return 'In warehouse';
+  if (!parsed.length) return 'No upcoming/recent delivery';
   const earliest = new Date(Math.min(...parsed.map(d => d.getTime())));
   return earliest.toLocaleDateString('en-GB');
 }
@@ -872,6 +872,7 @@ function processXlsxFile(file) {
         body: JSON.stringify({ id: 1, uploaded_at: new Date().toISOString(), stores: STORE_NAMES, variants })
       });
       appData = { stores: STORE_NAMES, variants };
+      document.getElementById('product-data-error').classList.add('hidden');
       buildStorePills(); populateDepts();
       document.getElementById('sel-cat').innerHTML = '<option value="">— Select Category —</option>'; document.getElementById('sel-cat').disabled = true;
       document.getElementById('sel-opt').innerHTML = '<option value="">— Select Option —</option>'; document.getElementById('sel-opt').disabled = true;
