@@ -25,7 +25,9 @@ CREATE TABLE IF NOT EXISTS submission_sections (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   submission_id uuid REFERENCES option_count_submissions(id),
   section_number int NOT NULL,
-  section_label text NOT NULL
+  section_label text NOT NULL,
+  comment text,
+  photo_url text
 );
 
 CREATE TABLE IF NOT EXISTS submission_fixtures (

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import FixtureRow from './FixtureRow'
 
 function uid() {
@@ -9,6 +10,18 @@ function emptyRow() {
 }
 
 export default function SectionPanel({ section, sectionNumber, fixtureNames, getIdeal, getDeptsForFixture, onChange, onRemove }) {
+  const [previewUrl, setPreviewUrl] = useState(null)
+
+  useEffect(() => {
+    if (!section.photo) {
+      setPreviewUrl(null)
+      return
+    }
+    const url = URL.createObjectURL(section.photo)
+    setPreviewUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [section.photo])
+
   function updateRow(rowId, updated) {
     onChange({ ...section, fixtures: section.fixtures.map(r => r.id === rowId ? updated : r) })
   }
@@ -19,6 +32,16 @@ export default function SectionPanel({ section, sectionNumber, fixtureNames, get
 
   function addRow() {
     onChange({ ...section, fixtures: [...section.fixtures, emptyRow()] })
+  }
+
+  function handlePhotoChange(e) {
+    const file = e.target.files?.[0]
+    if (file) onChange({ ...section, photo: file })
+    e.target.value = ''
+  }
+
+  function removePhoto() {
+    onChange({ ...section, photo: null })
   }
 
   let idealTotal = 0
@@ -79,6 +102,36 @@ export default function SectionPanel({ section, sectionNumber, fixtureNames, get
           rows={2}
           className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5a6b] resize-none"
         />
+      </div>
+
+      <div className="px-3 pb-3">
+        <p className="text-xs text-[#5a7180] font-medium mb-1">Section photo</p>
+        {previewUrl ? (
+          <div className="relative">
+            <img
+              src={previewUrl}
+              alt="Section photo preview"
+              className="w-full rounded-lg object-cover max-h-48"
+            />
+            <button
+              onClick={removePhoto}
+              className="absolute top-1.5 right-1.5 bg-black/50 text-white text-xs px-2 py-0.5 rounded-full hover:bg-black/70 transition-colors"
+            >
+              Remove
+            </button>
+          </div>
+        ) : (
+          <label className="flex items-center justify-center w-full border border-dashed border-[#2d5a6b]/30 rounded-lg py-4 cursor-pointer hover:border-[#2d5a6b]/60 hover:bg-[#2d5a6b]/5 transition-colors">
+            <span className="text-xs text-[#5a7180]">Tap to add photo</span>
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handlePhotoChange}
+            />
+          </label>
+        )}
       </div>
 
       <div className="flex justify-end gap-6 px-4 py-3 bg-[#f5f0e8] border-t border-[#ede5d4]">

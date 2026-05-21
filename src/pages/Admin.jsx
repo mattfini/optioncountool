@@ -258,6 +258,13 @@ function SubmissionDetail({ sub }) {
               <p className="text-xs text-[#5a7180] italic">"{sec.comment}"</p>
             )}
           </div>
+          {sec.photo_url && (
+            <img
+              src={sec.photo_url}
+              alt={`${sec.section_label} photo`}
+              className="w-full rounded-xl mb-2 object-cover max-h-48 border border-[#ede5d4]"
+            />
+          )}
           <div className="bg-white rounded-xl border border-[#ede5d4] overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
