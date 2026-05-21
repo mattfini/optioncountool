@@ -13,7 +13,7 @@ function emptyRow() {
 }
 
 function emptySection() {
-  return { id: uid(), fixtures: [emptyRow()], comment: '' }
+  return { id: uid(), fixtures: [emptyRow()], comment: '', photo: null }
 }
 
 function parseFixtureName(name) {
@@ -158,6 +158,23 @@ export default function Count() {
           .select()
           .single()
         if (secErr) throw secErr
+
+        if (sec.photo) {
+          const ext = sec.photo.name.split('.').pop() || 'jpg'
+          const path = `${sub.id}/${secData.id}.${ext}`
+          const { error: uploadErr } = await supabase.storage
+            .from('section-photos')
+            .upload(path, sec.photo, { upsert: true })
+          if (!uploadErr) {
+            const { data: urlData } = supabase.storage
+              .from('section-photos')
+              .getPublicUrl(path)
+            await supabase
+              .from('submission_sections')
+              .update({ photo_url: urlData.publicUrl })
+              .eq('id', secData.id)
+          }
+        }
 
         const fixtureRows = sec.fixtures
           .filter(r => r.fixture_name && r.department)
