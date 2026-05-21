@@ -1,6 +1,8 @@
 import ExcelJS from 'exceljs'
 import JSZip from 'jszip'
 
+const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+
 function normalize(sub) {
   return {
     id: sub.id,
@@ -23,7 +25,7 @@ function headerStyle(cell) {
   cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F0F3' } }
 }
 
-async function buildWorkbook(sub) {
+function buildWorkbook(sub) {
   const wb = new ExcelJS.Workbook()
   wb.creator = 'OptionCountTool'
 
@@ -80,80 +82,79 @@ async function buildWorkbook(sub) {
     detail.getColumn(i + 1).width = w
   })
 
-  // Sheet 3: Photos — one row per section that has a photo
-  const sectionsWithPhotos = sub.sections.filter(s => s.photo_url)
-  if (sectionsWithPhotos.length > 0) {
-    const photos = wb.addWorksheet('Photos')
-    photos.getColumn(1).width = 22
-    photos.getColumn(2).width = 52
-    photos.getColumn(3).width = 32
-
-    const photosHeader = photos.addRow(['Section', 'Photo', 'Comment'])
-    photosHeader.eachCell(headerStyle)
-
-    let rowIndex = 2
-    for (const sec of sectionsWithPhotos) {
-      photos.addRow([sec.section_label, '', sec.comment || ''])
-      // Row height in points — 160pt ≈ 213px, enough for a clear photo
-      photos.getRow(rowIndex).height = 160
-
-      try {
-        const res = await fetch(sec.photo_url)
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const buf = await res.arrayBuffer()
-        const imgId = wb.addImage({ buffer: buf, extension: detectExt(sec.photo_url) })
-        // Anchor image to cell B(rowIndex) using tl/br — more reliable than ext
-        photos.addImage(imgId, {
-          tl: { col: 1, row: rowIndex - 1 },
-          br: { col: 2, row: rowIndex },
-        })
-      } catch (err) {
-        console.error('Photo export failed for', sec.section_label, err)
-        photos.getRow(rowIndex).getCell(2).value = 'Photo unavailable'
-      }
-
-      rowIndex++
-    }
-  }
-
   return wb
+}
+
+function safe(str) {
+  return str.replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
 }
 
 function detectExt(url) {
   const ext = url.split('?')[0].split('.').pop().toLowerCase()
   if (ext === 'png') return 'png'
   if (ext === 'gif') return 'gif'
-  return 'jpeg'
+  return 'jpg'
 }
 
-function filename(sub) {
-  return `option-count-${sub.store_name.replace(/\s+/g, '-')}-${sub.id.slice(0, 8)}.xlsx`
+async function fetchPhotos(sub) {
+  const results = []
+  for (const sec of sub.sections) {
+    if (!sec.photo_url) continue
+    try {
+      const res = await fetch(sec.photo_url)
+      if (!res.ok) continue
+      const blob = await res.blob()
+      const ext = detectExt(sec.photo_url)
+      results.push({
+        name: `${safe(sub.store_name)}-${safe(sec.section_label)}.${ext}`,
+        blob,
+      })
+    } catch {
+      // skip photos that fail to fetch
+    }
+  }
+  return results
+}
+
+function triggerDownload(blob, name) {
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = name
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+}
+
+function xlsxFilename(sub) {
+  return `option-count-${safe(sub.store_name)}-${sub.id.slice(0, 8)}.xlsx`
 }
 
 export async function exportSingle(rawSub) {
   const sub = normalize(rawSub)
-  const wb = await buildWorkbook(sub)
+  const wb = buildWorkbook(sub)
   const buf = await wb.xlsx.writeBuffer()
-  const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = filename(sub)
-  a.click()
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+  const photos = await fetchPhotos(sub)
+
+  if (photos.length === 0) {
+    triggerDownload(new Blob([buf], { type: XLSX_MIME }), xlsxFilename(sub))
+  } else {
+    const zip = new JSZip()
+    zip.file(xlsxFilename(sub), buf)
+    for (const { name, blob } of photos) zip.file(name, blob)
+    const blob = await zip.generateAsync({ type: 'blob' })
+    triggerDownload(blob, `option-count-${safe(sub.store_name)}-${sub.id.slice(0, 8)}.zip`)
+  }
 }
 
 export async function exportBulk(rawSubs) {
   const zip = new JSZip()
   for (const rawSub of rawSubs) {
     const sub = normalize(rawSub)
-    const wb = await buildWorkbook(sub)
+    const wb = buildWorkbook(sub)
     const buf = await wb.xlsx.writeBuffer()
-    zip.file(filename(sub), buf)
+    zip.file(xlsxFilename(sub), buf)
+    const photos = await fetchPhotos(sub)
+    for (const { name, blob } of photos) zip.file(name, blob)
   }
   const blob = await zip.generateAsync({ type: 'blob' })
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = 'option-counts-export.zip'
-  a.click()
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+  triggerDownload(blob, 'option-counts-export.zip')
 }

@@ -176,27 +176,27 @@ function AdminDashboard({ onLogout }) {
           <p className="text-[#5a7180] text-sm py-8 text-center">No submissions yet.</p>
         ) : (
           <>
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm text-[#5a7180]">
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <p className="text-sm text-[#5a7180] mr-auto">
                 {submissions.length} submission{submissions.length !== 1 ? 's' : ''}
               </p>
               {selected.size > 0 && (
-                <div className="flex gap-2">
+                <>
                   <button
                     onClick={handleBulkExport}
                     disabled={deleting}
-                    className="bg-[#2d5a6b] text-white text-sm px-4 py-2 rounded-lg hover:bg-[#1e3d4a] transition-colors font-medium disabled:opacity-50"
+                    className="bg-[#2d5a6b] text-white text-sm px-4 py-2 rounded-lg hover:bg-[#1e3d4a] transition-colors font-medium disabled:opacity-50 whitespace-nowrap"
                   >
                     Export {selected.size} selected (.zip)
                   </button>
                   <button
                     onClick={handleDeleteSelected}
                     disabled={deleting}
-                    className="bg-red-500 text-white text-sm px-4 py-2 rounded-lg hover:bg-red-600 transition-colors font-medium disabled:opacity-50"
+                    className="bg-red-500 text-white text-sm px-4 py-2 rounded-lg hover:bg-red-600 transition-colors font-medium disabled:opacity-50 whitespace-nowrap"
                   >
                     {deleting ? 'Deleting…' : `Delete ${selected.size} selected`}
                   </button>
-                </div>
+                </>
               )}
             </div>
 
