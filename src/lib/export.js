@@ -80,13 +80,13 @@ async function buildWorkbook(sub) {
     detail.getColumn(i + 1).width = w
   })
 
-  // Sheet 3: Photos (only when at least one section has a photo)
+  // Sheet 3: Photos — one row per section that has a photo
   const sectionsWithPhotos = sub.sections.filter(s => s.photo_url)
   if (sectionsWithPhotos.length > 0) {
     const photos = wb.addWorksheet('Photos')
-    photos.getColumn(1).width = 20
-    photos.getColumn(2).width = 44
-    photos.getColumn(3).width = 30
+    photos.getColumn(1).width = 22
+    photos.getColumn(2).width = 52
+    photos.getColumn(3).width = 32
 
     const photosHeader = photos.addRow(['Section', 'Photo', 'Comment'])
     photosHeader.eachCell(headerStyle)
@@ -94,19 +94,21 @@ async function buildWorkbook(sub) {
     let rowIndex = 2
     for (const sec of sectionsWithPhotos) {
       photos.addRow([sec.section_label, '', sec.comment || ''])
-      const row = photos.getRow(rowIndex)
-      row.height = 140
+      // Row height in points — 160pt ≈ 213px, enough for a clear photo
+      photos.getRow(rowIndex).height = 160
 
       try {
         const res = await fetch(sec.photo_url)
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const buf = await res.arrayBuffer()
-        const ext = detectExt(sec.photo_url)
-        const imgId = wb.addImage({ buffer: buf, extension: ext })
+        const imgId = wb.addImage({ buffer: buf, extension: detectExt(sec.photo_url) })
+        // Anchor image to cell B(rowIndex) using tl/br — more reliable than ext
         photos.addImage(imgId, {
           tl: { col: 1, row: rowIndex - 1 },
-          ext: { width: 320, height: 186 },
+          br: { col: 2, row: rowIndex },
         })
-      } catch {
+      } catch (err) {
+        console.error('Photo export failed for', sec.section_label, err)
         photos.getRow(rowIndex).getCell(2).value = 'Photo unavailable'
       }
 
