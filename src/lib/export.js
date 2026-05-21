@@ -107,9 +107,16 @@ function storagePathFromUrl(url) {
 async function fetchPhotos(sub) {
   const results = []
   for (const sec of sub.sections) {
-    if (!sec.photo_url) continue
+    if (!sec.photo_url) {
+      console.log(`fetchPhotos: no photo_url for "${sec.section_label}"`)
+      continue
+    }
     const storagePath = storagePathFromUrl(sec.photo_url)
-    if (!storagePath) continue
+    if (!storagePath) {
+      console.warn(`fetchPhotos: could not parse storage path from URL: ${sec.photo_url}`)
+      continue
+    }
+    console.log(`fetchPhotos: downloading "${storagePath}"`)
     const { data, error } = await supabase.storage.from('section-photos').download(storagePath)
     if (error || !data) {
       console.warn('Photo download failed:', sec.section_label, error?.message)

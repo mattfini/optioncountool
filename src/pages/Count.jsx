@@ -165,14 +165,18 @@ export default function Count() {
           const { error: uploadErr } = await supabase.storage
             .from('section-photos')
             .upload(path, sec.photo, { upsert: true })
-          if (!uploadErr) {
+          if (uploadErr) {
+            console.error('Photo upload failed:', uploadErr.message)
+          } else {
             const { data: urlData } = supabase.storage
               .from('section-photos')
               .getPublicUrl(path)
-            await supabase
+            console.log('Photo uploaded, saving URL:', urlData.publicUrl)
+            const { error: updateErr } = await supabase
               .from('submission_sections')
               .update({ photo_url: urlData.publicUrl })
               .eq('id', secData.id)
+            if (updateErr) console.error('photo_url save failed:', updateErr.message)
           }
         }
 
