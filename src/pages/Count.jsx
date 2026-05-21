@@ -147,21 +147,12 @@ export default function Count() {
 
       for (let i = 0; i < sections.length; i++) {
         const sec = sections[i]
-        const { data: secData, error: secErr } = await supabase
-          .from('submission_sections')
-          .insert({
-            submission_id: sub.id,
-            section_number: i + 1,
-            section_label: `Section ${i + 1}`,
-            comment: sec.comment || null,
-          })
-          .select()
-          .single()
-        if (secErr) throw secErr
 
+        // Upload photo first so the URL can go directly into the section INSERT
+        let photoUrl = null
         if (sec.photo) {
           const ext = sec.photo.name.split('.').pop() || 'jpg'
-          const path = `${sub.id}/${secData.id}.${ext}`
+          const path = `${sub.id}/section-${i + 1}.${ext}`
           const { error: uploadErr } = await supabase.storage
             .from('section-photos')
             .upload(path, sec.photo, { upsert: true })
@@ -171,14 +162,22 @@ export default function Count() {
             const { data: urlData } = supabase.storage
               .from('section-photos')
               .getPublicUrl(path)
-            console.log('Photo uploaded, saving URL:', urlData.publicUrl)
-            const { error: updateErr } = await supabase
-              .from('submission_sections')
-              .update({ photo_url: urlData.publicUrl })
-              .eq('id', secData.id)
-            if (updateErr) console.error('photo_url save failed:', updateErr.message)
+            photoUrl = urlData.publicUrl
           }
         }
+
+        const { data: secData, error: secErr } = await supabase
+          .from('submission_sections')
+          .insert({
+            submission_id: sub.id,
+            section_number: i + 1,
+            section_label: `Section ${i + 1}`,
+            comment: sec.comment || null,
+            photo_url: photoUrl,
+          })
+          .select()
+          .single()
+        if (secErr) throw secErr
 
         const fixtureRows = sec.fixtures
           .filter(r => r.fixture_name && r.department)
