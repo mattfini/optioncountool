@@ -250,9 +250,14 @@ function SubmissionDetail({ sub }) {
       </p>
       {sections.map(sec => (
         <div key={sec.id} className="mb-3">
-          <p className="text-xs font-semibold text-[#1a2e35] mb-1.5 uppercase tracking-wide">
-            {sec.section_label}
-          </p>
+          <div className="flex items-baseline gap-3 mb-1.5">
+            <p className="text-xs font-semibold text-[#1a2e35] uppercase tracking-wide">
+              {sec.section_label}
+            </p>
+            {sec.comment && (
+              <p className="text-xs text-[#5a7180] italic">"{sec.comment}"</p>
+            )}
+          </div>
           <div className="bg-white rounded-xl border border-[#ede5d4] overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-xs">

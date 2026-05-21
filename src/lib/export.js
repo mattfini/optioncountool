@@ -11,6 +11,7 @@ function normalize(sub) {
       .sort((a, b) => a.section_number - b.section_number)
       .map(sec => ({
         section_label: sec.section_label,
+        comment: sec.comment || '',
         fixtures: sec.submission_fixtures || [],
       })),
   }
@@ -43,7 +44,7 @@ function buildWorkbook(sub) {
 
   // Sheet 2: Detail
   const detailRows = [
-    ['Section', 'Fixture', 'Department', 'Qty', 'Ideal/Fixture', 'Actual/Fixture', 'Ideal Total', 'Actual Total'],
+    ['Section', 'Fixture', 'Department', 'Qty', 'Ideal/Fixture', 'Actual/Fixture', 'Ideal Total', 'Actual Total', 'Comment'],
   ]
   for (const sec of sub.sections) {
     for (const fx of sec.fixtures) {
@@ -56,6 +57,7 @@ function buildWorkbook(sub) {
         Number(fx.actual_options_per_fixture),
         Number(fx.ideal_total),
         Number(fx.actual_total),
+        sec.comment || '',
       ])
     }
   }

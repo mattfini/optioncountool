@@ -13,7 +13,19 @@ function emptyRow() {
 }
 
 function emptySection() {
-  return { id: uid(), fixtures: [emptyRow()] }
+  return { id: uid(), fixtures: [emptyRow()], comment: '' }
+}
+
+function parseFixtureName(name) {
+  const m = name.match(/^(\d+)MM\s+(.+)$/)
+  return m ? { type: m[2], size: parseInt(m[1]) } : { type: name, size: Infinity }
+}
+
+function fixtureComparator(a, b) {
+  const pa = parseFixtureName(a)
+  const pb = parseFixtureName(b)
+  if (pa.type !== pb.type) return pa.type.localeCompare(pb.type)
+  return pa.size - pb.size
 }
 
 export default function Count() {
@@ -47,7 +59,7 @@ export default function Count() {
   }, [storeId])
 
   const fixtureNames = useMemo(
-    () => [...new Set(fixtureIdeals.map(f => f.fixture_name))].sort(),
+    () => [...new Set(fixtureIdeals.map(f => f.fixture_name))].sort(fixtureComparator),
     [fixtureIdeals]
   )
 
@@ -141,6 +153,7 @@ export default function Count() {
             submission_id: sub.id,
             section_number: i + 1,
             section_label: `Section ${i + 1}`,
+            comment: sec.comment || null,
           })
           .select()
           .single()

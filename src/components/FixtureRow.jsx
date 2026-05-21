@@ -57,7 +57,7 @@ export default function FixtureRow({ row, fixtureNames, getIdeal, getDeptsForFix
 
       <div className="grid grid-cols-2 gap-2 mb-2">
         <div>
-          <label className="block text-xs text-[#5a7180] mb-1">Qty</label>
+          <label className="block text-xs text-[#5a7180] mb-1">No. of selected fixture in section</label>
           <input
             type="number"
             min="0"
@@ -69,7 +69,7 @@ export default function FixtureRow({ row, fixtureNames, getIdeal, getDeptsForFix
           />
         </div>
         <div>
-          <label className="block text-xs text-[#5a7180] mb-1">Actual opts/fixture</label>
+          <label className="block text-xs text-[#5a7180] mb-1">Actual no. of options per fixture</label>
           <input
             type="number"
             min="0"

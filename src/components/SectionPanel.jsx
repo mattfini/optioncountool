@@ -68,6 +68,19 @@ export default function SectionPanel({ section, sectionNumber, fixtureNames, get
         </button>
       </div>
 
+      <div className="px-3 pb-3">
+        <label className="block text-xs text-[#5a7180] font-medium mb-1">
+          Section comment
+        </label>
+        <textarea
+          value={section.comment || ''}
+          onChange={e => onChange({ ...section, comment: e.target.value })}
+          placeholder="Any notes for this section…"
+          rows={2}
+          className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5a6b] resize-none"
+        />
+      </div>
+
       <div className="flex justify-end gap-6 px-4 py-3 bg-[#f5f0e8] border-t border-[#ede5d4]">
         <div className="text-center">
           <div className="text-xs text-[#5a7180] mb-0.5">Section Ideal</div>
