@@ -147,6 +147,25 @@ export default function Count() {
 
       for (let i = 0; i < sections.length; i++) {
         const sec = sections[i]
+
+        // Upload photo first so the URL can go directly into the section INSERT
+        let photoUrl = null
+        if (sec.photo) {
+          const ext = sec.photo.name.split('.').pop() || 'jpg'
+          const path = `${sub.id}/section-${i + 1}.${ext}`
+          const { error: uploadErr } = await supabase.storage
+            .from('section-photos')
+            .upload(path, sec.photo, { upsert: true })
+          if (uploadErr) {
+            console.error('Photo upload failed:', uploadErr.message)
+          } else {
+            const { data: urlData } = supabase.storage
+              .from('section-photos')
+              .getPublicUrl(path)
+            photoUrl = urlData.publicUrl
+          }
+        }
+
         const { data: secData, error: secErr } = await supabase
           .from('submission_sections')
           .insert({
@@ -154,27 +173,11 @@ export default function Count() {
             section_number: i + 1,
             section_label: `Section ${i + 1}`,
             comment: sec.comment || null,
+            photo_url: photoUrl,
           })
           .select()
           .single()
         if (secErr) throw secErr
-
-        if (sec.photo) {
-          const ext = sec.photo.name.split('.').pop() || 'jpg'
-          const path = `${sub.id}/${secData.id}.${ext}`
-          const { error: uploadErr } = await supabase.storage
-            .from('section-photos')
-            .upload(path, sec.photo, { upsert: true })
-          if (!uploadErr) {
-            const { data: urlData } = supabase.storage
-              .from('section-photos')
-              .getPublicUrl(path)
-            await supabase
-              .from('submission_sections')
-              .update({ photo_url: urlData.publicUrl })
-              .eq('id', secData.id)
-          }
-        }
 
         const fixtureRows = sec.fixtures
           .filter(r => r.fixture_name && r.department)

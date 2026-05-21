@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs'
 import JSZip from 'jszip'
+import { supabase } from './supabase'
 
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
@@ -96,22 +97,36 @@ function detectExt(url) {
   return 'jpg'
 }
 
+function storagePathFromUrl(url) {
+  // Extract the object path after the bucket name from a Supabase public URL
+  const marker = '/object/public/section-photos/'
+  const idx = url.indexOf(marker)
+  return idx !== -1 ? decodeURIComponent(url.slice(idx + marker.length).split('?')[0]) : null
+}
+
 async function fetchPhotos(sub) {
   const results = []
   for (const sec of sub.sections) {
-    if (!sec.photo_url) continue
-    try {
-      const res = await fetch(sec.photo_url)
-      if (!res.ok) continue
-      const blob = await res.blob()
-      const ext = detectExt(sec.photo_url)
-      results.push({
-        name: `${safe(sub.store_name)}-${safe(sec.section_label)}.${ext}`,
-        blob,
-      })
-    } catch {
-      // skip photos that fail to fetch
+    if (!sec.photo_url) {
+      console.log(`fetchPhotos: no photo_url for "${sec.section_label}"`)
+      continue
     }
+    const storagePath = storagePathFromUrl(sec.photo_url)
+    if (!storagePath) {
+      console.warn(`fetchPhotos: could not parse storage path from URL: ${sec.photo_url}`)
+      continue
+    }
+    console.log(`fetchPhotos: downloading "${storagePath}"`)
+    const { data, error } = await supabase.storage.from('section-photos').download(storagePath)
+    if (error || !data) {
+      console.warn('Photo download failed:', sec.section_label, error?.message)
+      continue
+    }
+    const ext = detectExt(sec.photo_url)
+    results.push({
+      name: `${safe(sub.store_name)}-${safe(sec.section_label)}.${ext}`,
+      blob: data,
+    })
   }
   return results
 }
