@@ -63,6 +63,7 @@ function AdminDashboard({ onLogout }) {
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState(null)
   const [selected, setSelected] = useState(new Set())
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     supabase
@@ -112,6 +113,45 @@ function AdminDashboard({ onLogout }) {
     await exportBulk(subs)
   }
 
+  async function handleDeleteSelected() {
+    if (!window.confirm(`Permanently delete ${selected.size} submission${selected.size !== 1 ? 's' : ''}? This cannot be undone.`)) return
+
+    setDeleting(true)
+    try {
+      const toDelete = submissions.filter(s => selected.has(s.id))
+      const submissionIds = toDelete.map(s => s.id)
+      const sectionIds = toDelete.flatMap(s => (s.submission_sections || []).map(sec => sec.id))
+
+      if (sectionIds.length > 0) {
+        const { error } = await supabase.from('submission_fixtures').delete().in('section_id', sectionIds)
+        if (error) throw error
+      }
+
+      // Delete storage photos, one submission folder at a time
+      for (const submissionId of submissionIds) {
+        const { data: files } = await supabase.storage.from('section-photos').list(submissionId)
+        if (files && files.length > 0) {
+          await supabase.storage.from('section-photos').remove(files.map(f => `${submissionId}/${f.name}`))
+        }
+      }
+
+      if (submissionIds.length > 0) {
+        const { error: secErr } = await supabase.from('submission_sections').delete().in('submission_id', submissionIds)
+        if (secErr) throw secErr
+        const { error: subErr } = await supabase.from('option_count_submissions').delete().in('id', submissionIds)
+        if (subErr) throw subErr
+      }
+
+      setSubmissions(prev => prev.filter(s => !selected.has(s.id)))
+      setSelected(new Set())
+      if (expandedId && selected.has(expandedId)) setExpandedId(null)
+    } catch (err) {
+      window.alert('Delete failed: ' + (err.message || 'Unknown error'))
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-[#f5f0e8]">
       <header className="bg-[#1e3d4a] px-5 h-14 flex items-center justify-between sticky top-0 z-10 shadow-lg">
@@ -136,17 +176,27 @@ function AdminDashboard({ onLogout }) {
           <p className="text-[#5a7180] text-sm py-8 text-center">No submissions yet.</p>
         ) : (
           <>
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm text-[#5a7180]">
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <p className="text-sm text-[#5a7180] mr-auto">
                 {submissions.length} submission{submissions.length !== 1 ? 's' : ''}
               </p>
               {selected.size > 0 && (
-                <button
-                  onClick={handleBulkExport}
-                  className="bg-[#2d5a6b] text-white text-sm px-4 py-2 rounded-lg hover:bg-[#1e3d4a] transition-colors font-medium"
-                >
-                  Export {selected.size} selected (.zip)
-                </button>
+                <>
+                  <button
+                    onClick={handleBulkExport}
+                    disabled={deleting}
+                    className="bg-[#2d5a6b] text-white text-sm px-4 py-2 rounded-lg hover:bg-[#1e3d4a] transition-colors font-medium disabled:opacity-50 whitespace-nowrap"
+                  >
+                    Export {selected.size} selected (.zip)
+                  </button>
+                  <button
+                    onClick={handleDeleteSelected}
+                    disabled={deleting}
+                    className="bg-red-500 text-white text-sm px-4 py-2 rounded-lg hover:bg-red-600 transition-colors font-medium disabled:opacity-50 whitespace-nowrap"
+                  >
+                    {deleting ? 'Deleting…' : `Delete ${selected.size} selected`}
+                  </button>
+                </>
               )}
             </div>
 

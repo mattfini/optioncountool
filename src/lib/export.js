@@ -1,5 +1,7 @@
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 import JSZip from 'jszip'
+
+const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
 function normalize(sub) {
   return {
@@ -12,22 +14,31 @@ function normalize(sub) {
       .map(sec => ({
         section_label: sec.section_label,
         comment: sec.comment || '',
+        photo_url: sec.photo_url || null,
         fixtures: sec.submission_fixtures || [],
       })),
   }
 }
 
+function headerStyle(cell) {
+  cell.font = { bold: true }
+  cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8F0F3' } }
+}
+
 function buildWorkbook(sub) {
-  const wb = XLSX.utils.book_new()
+  const wb = new ExcelJS.Workbook()
+  wb.creator = 'OptionCountTool'
 
   // Sheet 1: Summary
-  const summaryRows = [
-    ['Store', sub.store_name],
-    ['Submitted By', sub.submitted_by],
-    ['Date', new Date(sub.submitted_at).toLocaleDateString('en-GB')],
-    [],
-    ['Department', 'Ideal Total', 'Actual Total', 'Difference'],
-  ]
+  const summary = wb.addWorksheet('Summary')
+  summary.addRow(['Store', sub.store_name])
+  summary.addRow(['Submitted By', sub.submitted_by])
+  summary.addRow(['Date', new Date(sub.submitted_at).toLocaleDateString('en-GB')])
+  summary.addRow([])
+
+  const summaryHeader = summary.addRow(['Department', 'Ideal Total', 'Actual Total', 'Difference'])
+  summaryHeader.eachCell(headerStyle)
+
   const byDept = {}
   for (const sec of sub.sections) {
     for (const fx of sec.fixtures) {
@@ -38,17 +49,23 @@ function buildWorkbook(sub) {
     }
   }
   for (const [dept, v] of Object.entries(byDept)) {
-    summaryRows.push([dept, v.ideal, v.actual, v.actual - v.ideal])
+    summary.addRow([dept, v.ideal, v.actual, v.actual - v.ideal])
   }
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryRows), 'Summary')
+  summary.getColumn(1).width = 24
+  summary.getColumn(2).width = 14
+  summary.getColumn(3).width = 14
+  summary.getColumn(4).width = 14
 
   // Sheet 2: Detail
-  const detailRows = [
-    ['Section', 'Fixture', 'Department', 'Qty', 'Ideal/Fixture', 'Actual/Fixture', 'Ideal Total', 'Actual Total', 'Comment'],
-  ]
+  const detail = wb.addWorksheet('Detail')
+  const detailHeader = detail.addRow([
+    'Section', 'Fixture', 'Department', 'Qty',
+    'Ideal/Fixture', 'Actual/Fixture', 'Ideal Total', 'Actual Total', 'Comment',
+  ])
+  detailHeader.eachCell(headerStyle)
   for (const sec of sub.sections) {
     for (const fx of sec.fixtures) {
-      detailRows.push([
+      detail.addRow([
         sec.section_label,
         fx.fixture_name,
         fx.department,
@@ -61,15 +78,71 @@ function buildWorkbook(sub) {
       ])
     }
   }
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(detailRows), 'Detail')
+  ;[20, 20, 16, 8, 14, 16, 12, 12, 30].forEach((w, i) => {
+    detail.getColumn(i + 1).width = w
+  })
 
   return wb
 }
 
-export function exportSingle(rawSub) {
+function safe(str) {
+  return str.replace(/[^a-zA-Z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
+}
+
+function detectExt(url) {
+  const ext = url.split('?')[0].split('.').pop().toLowerCase()
+  if (ext === 'png') return 'png'
+  if (ext === 'gif') return 'gif'
+  return 'jpg'
+}
+
+async function fetchPhotos(sub) {
+  const results = []
+  for (const sec of sub.sections) {
+    if (!sec.photo_url) continue
+    try {
+      const res = await fetch(sec.photo_url)
+      if (!res.ok) continue
+      const blob = await res.blob()
+      const ext = detectExt(sec.photo_url)
+      results.push({
+        name: `${safe(sub.store_name)}-${safe(sec.section_label)}.${ext}`,
+        blob,
+      })
+    } catch {
+      // skip photos that fail to fetch
+    }
+  }
+  return results
+}
+
+function triggerDownload(blob, name) {
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = name
+  a.click()
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+}
+
+function xlsxFilename(sub) {
+  return `option-count-${safe(sub.store_name)}-${sub.id.slice(0, 8)}.xlsx`
+}
+
+export async function exportSingle(rawSub) {
   const sub = normalize(rawSub)
   const wb = buildWorkbook(sub)
-  XLSX.writeFile(wb, `option-count-${sub.store_name.replace(/\s+/g, '-')}-${sub.id.slice(0, 8)}.xlsx`)
+  const buf = await wb.xlsx.writeBuffer()
+  const photos = await fetchPhotos(sub)
+
+  if (photos.length === 0) {
+    triggerDownload(new Blob([buf], { type: XLSX_MIME }), xlsxFilename(sub))
+  } else {
+    const zip = new JSZip()
+    zip.file(xlsxFilename(sub), buf)
+    for (const { name, blob } of photos) zip.file(name, blob)
+    const blob = await zip.generateAsync({ type: 'blob' })
+    triggerDownload(blob, `option-count-${safe(sub.store_name)}-${sub.id.slice(0, 8)}.zip`)
+  }
 }
 
 export async function exportBulk(rawSubs) {
@@ -77,13 +150,11 @@ export async function exportBulk(rawSubs) {
   for (const rawSub of rawSubs) {
     const sub = normalize(rawSub)
     const wb = buildWorkbook(sub)
-    const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
-    zip.file(`option-count-${sub.store_name.replace(/\s+/g, '-')}-${sub.id.slice(0, 8)}.xlsx`, buf)
+    const buf = await wb.xlsx.writeBuffer()
+    zip.file(xlsxFilename(sub), buf)
+    const photos = await fetchPhotos(sub)
+    for (const { name, blob } of photos) zip.file(name, blob)
   }
   const blob = await zip.generateAsync({ type: 'blob' })
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = 'option-counts-export.zip'
-  a.click()
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+  triggerDownload(blob, 'option-counts-export.zip')
 }
