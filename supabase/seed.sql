@@ -1,6 +1,23 @@
 -- Stores
-INSERT INTO stores (name, layout_image_url) VALUES
-('St Agnes', 'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/st-agnes.png');
+INSERT INTO stores (name, layout_image_url, layout_image_url_2) VALUES
+('St Agnes',    'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/st-agnes.png',      NULL),
+('Bath',        'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/bath.png',          NULL),
+('Brighton',    'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/brighton.png',      NULL),
+('Bristol',     'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/bristol.png',       NULL),
+('Cambridge',   'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/cambridge.png',     NULL),
+('Cardiff',     'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/cardiff.png',       NULL),
+('Edinburgh',   'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/edinburgh.png',     NULL),
+('Exeter',      'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/exeter.png',        NULL),
+('Falmouth',    'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/falmouth.png',      NULL),
+('Hawksfield',  'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/hawksfield.png',    NULL),
+('Holt',        'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/holt.png',          NULL),
+('London',      'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/london-floor1.png',
+                'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/london-floor2.png'),
+('Poole',       'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/poole-floor1.png',
+                'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/poole-floor2.png'),
+('St Ives',     'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/st-ives.png',       NULL),
+('Southwold',   NULL, NULL),
+('Leeds',       NULL, NULL);
 
 -- Fixture Ideals
 INSERT INTO fixture_ideals (fixture_name, department, ideal_options) VALUES
