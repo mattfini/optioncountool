@@ -47,7 +47,7 @@ export default function Count() {
   useEffect(() => {
     async function load() {
       const [storeRes, idealsRes] = await Promise.all([
-        supabase.from('stores').select('id, name, layout_image_url').eq('id', storeId).single(),
+        supabase.from('stores').select('id, name, layout_image_url, layout_image_url_2').eq('id', storeId).single(),
         supabase.from('fixture_ideals').select('fixture_name, department, ideal_options'),
       ])
       if (storeRes.error) setLoadError('Store not found.')
@@ -261,14 +261,32 @@ export default function Count() {
         <div className="w-16" />
       </header>
 
-      {store.layout_image_url ? (
+      {store.layout_image_url || store.layout_image_url_2 ? (
         <div className="w-full bg-white border-b border-[#ede5d4]">
-          <img
-            src={store.layout_image_url}
-            alt={`${store.name} layout`}
-            className="w-full object-contain"
-            style={{ maxHeight: 300 }}
-          />
+          {store.layout_image_url && (
+            <>
+              {store.layout_image_url_2 && (
+                <p className="text-xs text-center text-[#5a7180] pt-2 font-medium">Floor 1</p>
+              )}
+              <img
+                src={store.layout_image_url}
+                alt={`${store.name} floor 1 layout`}
+                className="w-full object-contain"
+                style={{ maxHeight: 300 }}
+              />
+            </>
+          )}
+          {store.layout_image_url_2 && (
+            <>
+              <p className="text-xs text-center text-[#5a7180] pt-2 font-medium border-t border-[#ede5d4]">Floor 2</p>
+              <img
+                src={store.layout_image_url_2}
+                alt={`${store.name} floor 2 layout`}
+                className="w-full object-contain"
+                style={{ maxHeight: 300 }}
+              />
+            </>
+          )}
         </div>
       ) : (
         <div className="w-full h-28 bg-gray-100 flex items-center justify-center border-b border-gray-200">
