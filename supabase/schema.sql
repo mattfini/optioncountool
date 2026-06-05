@@ -40,7 +40,8 @@ CREATE TABLE IF NOT EXISTS submission_fixtures (
   actual_options_per_fixture int,
   ideal_options_per_fixture numeric,
   ideal_total numeric,
-  actual_total numeric
+  actual_total numeric,
+  product_story text
 );
 
 -- Enable RLS

@@ -60,7 +60,7 @@ function buildWorkbook(sub) {
   // Sheet 2: Detail
   const detail = wb.addWorksheet('Detail')
   const detailHeader = detail.addRow([
-    'Section', 'Fixture', 'Department', 'Qty',
+    'Section', 'Fixture', 'Department', 'Product Story', 'Qty',
     'Ideal/Fixture', 'Actual/Fixture', 'Ideal Total', 'Actual Total', 'Comment',
   ])
   detailHeader.eachCell(headerStyle)
@@ -70,6 +70,7 @@ function buildWorkbook(sub) {
         sec.section_label,
         fx.fixture_name,
         fx.department,
+        fx.product_story || '',
         Number(fx.quantity),
         Number(fx.ideal_options_per_fixture),
         Number(fx.actual_options_per_fixture),
@@ -79,7 +80,7 @@ function buildWorkbook(sub) {
       ])
     }
   }
-  ;[20, 20, 16, 8, 14, 16, 12, 12, 30].forEach((w, i) => {
+  ;[20, 20, 16, 20, 8, 14, 16, 12, 12, 30].forEach((w, i) => {
     detail.getColumn(i + 1).width = w
   })
 

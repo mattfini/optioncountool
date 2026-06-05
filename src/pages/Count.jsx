@@ -9,7 +9,7 @@ function uid() {
 }
 
 function emptyRow() {
-  return { id: uid(), fixture_name: '', department: '', quantity: '', actual_options_per_fixture: '' }
+  return { id: uid(), fixture_name: '', department: '', quantity: '', actual_options_per_fixture: '', product_story: '', product_story_comment: '' }
 }
 
 function emptySection() {
@@ -185,6 +185,9 @@ export default function Count() {
             const qty = parseFloat(r.quantity) || 0
             const actualPer = parseInt(r.actual_options_per_fixture) || 0
             const idealPer = getIdeal(r.fixture_name, r.department) || 0
+            const productStory = r.product_story === 'Other'
+              ? `Other: ${r.product_story_comment || ''}`.trim()
+              : (r.product_story || null)
             return {
               section_id: secData.id,
               fixture_name: r.fixture_name,
@@ -194,6 +197,7 @@ export default function Count() {
               ideal_options_per_fixture: idealPer,
               ideal_total: qty * idealPer,
               actual_total: qty * actualPer,
+              product_story: productStory,
             }
           })
 
