@@ -3,7 +3,8 @@
 CREATE TABLE IF NOT EXISTS stores (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL,
-  layout_image_url text
+  layout_image_url text,
+  layout_image_url_2 text
 );
 
 CREATE TABLE IF NOT EXISTS fixture_ideals (
