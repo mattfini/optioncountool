@@ -13,7 +13,7 @@ function emptyRow() {
 }
 
 function emptySection() {
-  return { id: uid(), fixtures: [emptyRow()], comment: '', photo: null }
+  return { id: uid(), fixtures: [emptyRow()], comment: '', photo: null, label: '' }
 }
 
 function parseFixtureName(name) {
@@ -28,9 +28,18 @@ function fixtureComparator(a, b) {
   return pa.size - pb.size
 }
 
+function sectionDisplayLabel(sec, idx) {
+  return sec.label?.trim() || `Section ${idx + 1}`
+}
+
+function formatDraftDate(iso) {
+  return new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+}
+
 export default function Count() {
   const { storeId } = useParams()
   const navigate = useNavigate()
+  const DRAFT_KEY = `option-count-draft-${storeId}`
 
   const [store, setStore] = useState(null)
   const [fixtureIdeals, setFixtureIdeals] = useState([])
@@ -44,6 +53,10 @@ export default function Count() {
   const [submitResult, setSubmitResult] = useState(null)
   const [validationError, setValidationError] = useState(null)
 
+  const [draftModal, setDraftModal] = useState(null) // draft object or null
+  const [savedIndicator, setSavedIndicator] = useState(false)
+
+  // Load store data, then check for a saved draft
   useEffect(() => {
     async function load() {
       const [storeRes, idealsRes] = await Promise.all([
@@ -54,9 +67,47 @@ export default function Count() {
       else setStore(storeRes.data)
       if (idealsRes.data) setFixtureIdeals(idealsRes.data)
       setLoading(false)
+
+      try {
+        const raw = localStorage.getItem(`option-count-draft-${storeId}`)
+        if (raw) setDraftModal(JSON.parse(raw))
+      } catch { /* ignore corrupt drafts */ }
     }
     load()
   }, [storeId])
+
+  // Auto-save draft whenever form changes (skipped while draft modal is open)
+  useEffect(() => {
+    if (!store || draftModal !== null) return
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({
+          submitterName,
+          sections: sections.map(s => ({ ...s, photo: null })),
+          savedAt: new Date().toISOString(),
+        }))
+        setSavedIndicator(true)
+        setTimeout(() => setSavedIndicator(false), 2000)
+      } catch { /* ignore storage errors */ }
+    }, 1000)
+    return () => clearTimeout(timer)
+  }, [submitterName, sections, store, draftModal, DRAFT_KEY])
+
+  function resumeDraft() {
+    setSubmitterName(draftModal.submitterName || '')
+    setSections(draftModal.sections.map(s => ({
+      ...emptySection(),
+      ...s,
+      label: s.label || '',
+      photo: null,
+    })))
+    setDraftModal(null)
+  }
+
+  function startFresh() {
+    localStorage.removeItem(DRAFT_KEY)
+    setDraftModal(null)
+  }
 
   const fixtureNames = useMemo(
     () => [...new Set(fixtureIdeals.map(f => f.fixture_name))].sort(fixtureComparator),
@@ -92,7 +143,7 @@ export default function Count() {
         ? (getIdeal(row.fixture_name, row.department) || 0)
         : 0
       ideal += qty * idealPer
-      actual += qty * actualPer
+      actual += Math.ceil(qty) * actualPer
     }
     return { ideal, actual }
   }
@@ -148,7 +199,6 @@ export default function Count() {
       for (let i = 0; i < sections.length; i++) {
         const sec = sections[i]
 
-        // Upload photo first so the URL can go directly into the section INSERT
         let photoUrl = null
         if (sec.photo) {
           const ext = sec.photo.name.split('.').pop() || 'jpg'
@@ -171,7 +221,7 @@ export default function Count() {
           .insert({
             submission_id: sub.id,
             section_number: i + 1,
-            section_label: `Section ${i + 1}`,
+            section_label: sectionDisplayLabel(sec, i),
             comment: sec.comment || null,
             photo_url: photoUrl,
           })
@@ -196,7 +246,7 @@ export default function Count() {
               actual_options_per_fixture: actualPer,
               ideal_options_per_fixture: idealPer,
               ideal_total: qty * idealPer,
-              actual_total: qty * actualPer,
+              actual_total: Math.ceil(qty) * actualPer,
               product_story: productStory,
             }
           })
@@ -209,9 +259,11 @@ export default function Count() {
         }
       }
 
+      localStorage.removeItem(DRAFT_KEY)
+
       const sectionSummaries = sections.map((sec, i) => {
         const t = sectionTotals(sec)
-        return { label: `Section ${i + 1}`, ideal: t.ideal, actual: t.actual }
+        return { label: sectionDisplayLabel(sec, i), ideal: t.ideal, actual: t.actual }
       })
       setSubmitResult({
         submittedBy: submitterName.trim(),
@@ -254,15 +306,44 @@ export default function Count() {
 
   return (
     <div className="min-h-screen bg-[#f5f0e8] pb-24">
+      {/* Resume draft modal */}
+      {draftModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
+            <h2 className="font-semibold text-[#1a2e35] text-lg mb-1">Resume saved count?</h2>
+            <p className="text-sm text-[#5a7180] mb-5">
+              You have an unfinished count saved from {formatDraftDate(draftModal.savedAt)}
+              {draftModal.submitterName ? ` by ${draftModal.submitterName}` : ''}.
+              Photos will need to be re-added.
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={resumeDraft}
+                className="w-full bg-[#2d5a6b] text-white py-2.5 rounded-xl font-medium hover:bg-[#1e3d4a] transition-colors"
+              >
+                Resume count
+              </button>
+              <button
+                onClick={startFresh}
+                className="w-full border border-gray-200 text-[#5a7180] py-2.5 rounded-xl font-medium hover:bg-gray-50 transition-colors"
+              >
+                Start new count
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <header className="bg-[#1e3d4a] px-5 h-14 flex items-center justify-between sticky top-0 z-20 shadow-lg">
-        <button
-          onClick={() => navigate('/')}
-          className="text-[#c8b89a] text-sm"
-        >
+        <button onClick={() => navigate('/')} className="text-[#c8b89a] text-sm">
           ← Stores
         </button>
         <h1 className="text-[#f5f0e8] font-semibold text-base truncate mx-3">{store.name}</h1>
-        <div className="w-16" />
+        <div className="w-16 text-right">
+          <span className={`text-xs transition-opacity duration-500 ${savedIndicator ? 'text-[#c8b89a] opacity-100' : 'opacity-0'}`}>
+            Saved ✓
+          </span>
+        </div>
       </header>
 
       {store.layout_image_url || store.layout_image_url_2 ? (
