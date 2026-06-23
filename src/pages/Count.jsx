@@ -53,20 +53,34 @@ export default function Count() {
   const [submitResult, setSubmitResult] = useState(null)
   const [validationError, setValidationError] = useState(null)
 
+  const [season, setSeason] = useState('SS')
+
   const [draftModal, setDraftModal] = useState(null) // draft object or null
   const [savedIndicator, setSavedIndicator] = useState(false)
 
   // Load store data, then check for a saved draft
   useEffect(() => {
     async function load() {
-      const [storeRes, idealsRes] = await Promise.all([
-        supabase.from('stores').select('id, name, layout_image_url, layout_image_url_2').eq('id', storeId).single(),
-        supabase.from('fixture_ideals').select('fixture_name, department, ss_ideal, aw_ideal'),
-      ])
-      if (storeRes.error) setLoadError('Store not found.')
-      else setStore(storeRes.data)
-      if (idealsRes.data) setFixtureIdeals(idealsRes.data)
-      setLoading(false)
+      try {
+        const [storeRes, idealsRes] = await Promise.all([
+          supabase.from('stores').select('id, name, layout_image_url, layout_image_url_2').eq('id', storeId).single(),
+          supabase.from('fixture_ideals').select('fixture_name, department, ss_ideal, aw_ideal'),
+        ])
+        if (storeRes.error) {
+          setLoadError('Store not found.')
+        } else {
+          setStore(storeRes.data)
+        }
+        if (idealsRes.error) {
+          setLoadError(prev => prev || 'Could not load fixture data: ' + idealsRes.error.message)
+        } else if (idealsRes.data) {
+          setFixtureIdeals(idealsRes.data)
+        }
+      } catch (err) {
+        setLoadError('Failed to load page: ' + (err.message || 'Unknown error'))
+      } finally {
+        setLoading(false)
+      }
 
       try {
         const raw = localStorage.getItem(`option-count-draft-${storeId}`)
@@ -83,6 +97,7 @@ export default function Count() {
       try {
         localStorage.setItem(DRAFT_KEY, JSON.stringify({
           submitterName,
+          season,
           sections: sections.map(s => ({ ...s, photo: null })),
           savedAt: new Date().toISOString(),
         }))
@@ -91,16 +106,16 @@ export default function Count() {
       } catch { /* ignore storage errors */ }
     }, 1000)
     return () => clearTimeout(timer)
-  }, [submitterName, sections, store, draftModal, DRAFT_KEY])
+  }, [submitterName, season, sections, store, draftModal, DRAFT_KEY])
 
   function resumeDraft() {
     setSubmitterName(draftModal.submitterName || '')
-    setSections(draftModal.sections.map(s => ({
-      ...emptySection(),
-      ...s,
-      label: s.label || '',
-      photo: null,
-    })))
+    setSeason(draftModal.season || 'SS')
+    const savedSections = Array.isArray(draftModal.sections) ? draftModal.sections : []
+    setSections(savedSections.length > 0
+      ? savedSections.map(s => ({ ...emptySection(), ...s, label: s.label || '', photo: null }))
+      : [emptySection()]
+    )
     setDraftModal(null)
   }
 
