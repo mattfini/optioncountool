@@ -53,8 +53,6 @@ export default function Count() {
   const [submitResult, setSubmitResult] = useState(null)
   const [validationError, setValidationError] = useState(null)
 
-  const [season, setSeason] = useState('SS')
-
   const [draftModal, setDraftModal] = useState(null) // draft object or null
   const [savedIndicator, setSavedIndicator] = useState(false)
 
@@ -85,7 +83,6 @@ export default function Count() {
       try {
         localStorage.setItem(DRAFT_KEY, JSON.stringify({
           submitterName,
-          season,
           sections: sections.map(s => ({ ...s, photo: null })),
           savedAt: new Date().toISOString(),
         }))
@@ -94,11 +91,10 @@ export default function Count() {
       } catch { /* ignore storage errors */ }
     }, 1000)
     return () => clearTimeout(timer)
-  }, [submitterName, season, sections, store, draftModal, DRAFT_KEY])
+  }, [submitterName, sections, store, draftModal, DRAFT_KEY])
 
   function resumeDraft() {
     setSubmitterName(draftModal.submitterName || '')
-    setSeason(draftModal.season || 'SS')
     setSections(draftModal.sections.map(s => ({
       ...emptySection(),
       ...s,
