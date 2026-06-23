@@ -61,7 +61,7 @@ export default function Count() {
     async function load() {
       const [storeRes, idealsRes] = await Promise.all([
         supabase.from('stores').select('id, name, layout_image_url, layout_image_url_2').eq('id', storeId).single(),
-        supabase.from('fixture_ideals').select('fixture_name, department, ideal_options'),
+        supabase.from('fixture_ideals').select('fixture_name, department, ss_ideal, aw_ideal'),
       ])
       if (storeRes.error) setLoadError('Store not found.')
       else setStore(storeRes.data)
@@ -117,7 +117,7 @@ export default function Count() {
   const idealLookup = useMemo(() => {
     const m = new Map()
     for (const f of fixtureIdeals) {
-      m.set(`${f.fixture_name.toLowerCase()}|${f.department.toLowerCase()}`, f.ideal_options)
+      m.set(`${f.fixture_name.toLowerCase()}|${f.department.toLowerCase()}`, { ss: f.ss_ideal, aw: f.aw_ideal })
     }
     return m
   }, [fixtureIdeals])
@@ -125,8 +125,9 @@ export default function Count() {
   const getIdeal = useCallback((fixtureName, department) => {
     if (!fixtureName || !department) return null
     const val = idealLookup.get(`${fixtureName.toLowerCase()}|${department.toLowerCase()}`)
-    return val !== undefined ? val : null
-  }, [idealLookup])
+    if (val === undefined) return null
+    return season === 'AW' ? (val.aw ?? null) : (val.ss ?? null)
+  }, [idealLookup, season])
 
   const getDeptsForFixture = useCallback((fixtureName) => {
     return fixtureIdeals
@@ -157,7 +158,7 @@ export default function Count() {
     }
     return { ideal, actual }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sections, idealLookup])
+  }, [sections, getIdeal])
 
   function updateSection(idx, updated) {
     setSections(prev => prev.map((s, i) => i === idx ? updated : s))
@@ -191,7 +192,7 @@ export default function Count() {
     try {
       const { data: sub, error: subErr } = await supabase
         .from('option_count_submissions')
-        .insert({ store_id: storeId, submitted_by: submitterName.trim() })
+        .insert({ store_id: storeId, submitted_by: submitterName.trim(), season })
         .select()
         .single()
       if (subErr) throw subErr
@@ -389,8 +390,27 @@ export default function Count() {
             value={submitterName}
             onChange={e => setSubmitterName(e.target.value)}
             placeholder="Enter your name"
-            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5a6b]"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5a6b] mb-4"
           />
+          <label className="block text-sm font-medium text-[#1a2e35] mb-2">
+            Season
+          </label>
+          <div className="flex gap-2">
+            {[['SS', 'Spring / Summer'], ['AW', 'Autumn / Winter']].map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setSeason(key)}
+                className={`flex-1 py-2 rounded-lg text-sm font-semibold border transition-colors ${
+                  season === key
+                    ? 'bg-[#2d5a6b] text-white border-[#2d5a6b]'
+                    : 'bg-white text-[#2d5a6b] border-[#2d5a6b]/30 hover:border-[#2d5a6b]/60 hover:bg-[#2d5a6b]/5'
+                }`}
+              >
+                {key} — {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {sections.map((sec, idx) => (

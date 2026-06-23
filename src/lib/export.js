@@ -10,6 +10,7 @@ function normalize(sub) {
     store_name: sub.stores?.name || 'Unknown',
     submitted_by: sub.submitted_by,
     submitted_at: sub.submitted_at,
+    season: sub.season || 'SS',
     sections: [...(sub.submission_sections || [])]
       .sort((a, b) => a.section_number - b.section_number)
       .map(sec => ({
@@ -34,6 +35,7 @@ function buildWorkbook(sub) {
   const summary = wb.addWorksheet('Summary')
   summary.addRow(['Store', sub.store_name])
   summary.addRow(['Submitted By', sub.submitted_by])
+  summary.addRow(['Season', sub.season === 'AW' ? 'AW — Autumn / Winter' : 'SS — Spring / Summer'])
   summary.addRow(['Date', new Date(sub.submitted_at).toLocaleDateString('en-GB')])
   summary.addRow([])
 
@@ -84,7 +86,105 @@ function buildWorkbook(sub) {
     detail.getColumn(i + 1).width = w
   })
 
+  // Sheet 3: Product Story Summary
+  buildProductStorySummarySheet(wb, sub)
+
   return wb
+}
+
+function cellFill(cell, argb) {
+  cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb } }
+}
+
+function buildProductStorySummarySheet(wb, sub) {
+  const ws = wb.addWorksheet('Product Story Summary')
+
+  // Column header row
+  const hRow = ws.addRow(['Department', 'Product Story', 'Fixture', 'Qty', 'Ideal Total', 'Actual Total'])
+  hRow.eachCell(c => {
+    cellFill(c, 'FF1E3D4A')
+    c.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+  })
+
+  // Build hierarchy: dept → productStory → fixture → { qty, ideal, actual }
+  const byDept = new Map()
+  for (const sec of sub.sections) {
+    for (const fx of sec.fixtures) {
+      const dept = fx.department || 'Unknown'
+      const ps = fx.product_story || 'Not specified'
+      const fixture = fx.fixture_name || 'Unknown'
+      if (!byDept.has(dept)) byDept.set(dept, new Map())
+      const deptMap = byDept.get(dept)
+      if (!deptMap.has(ps)) deptMap.set(ps, new Map())
+      const psMap = deptMap.get(ps)
+      if (!psMap.has(fixture)) psMap.set(fixture, { qty: 0, ideal: 0, actual: 0 })
+      const v = psMap.get(fixture)
+      v.qty += Number(fx.quantity) || 0
+      v.ideal += Number(fx.ideal_total) || 0
+      v.actual += Number(fx.actual_total) || 0
+    }
+  }
+
+  for (const [dept, stories] of byDept) {
+    let deptIdeal = 0, deptActual = 0
+
+    // Department header
+    const dRow = ws.addRow([dept.toUpperCase(), '', '', '', '', ''])
+    for (let col = 1; col <= 6; col++) {
+      const c = dRow.getCell(col)
+      cellFill(c, 'FF2D5A6B')
+      c.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+    }
+
+    for (const [ps, fixtures] of stories) {
+      let psIdeal = 0, psActual = 0
+
+      // Product story header
+      const psRow = ws.addRow(['', ps, '', '', '', ''])
+      for (let col = 1; col <= 6; col++) {
+        const c = psRow.getCell(col)
+        cellFill(c, 'FFE8F0F3')
+        c.font = { bold: true }
+      }
+
+      for (const [fixture, v] of fixtures) {
+        ws.addRow(['', '', fixture, v.qty, v.ideal, v.actual])
+        psIdeal += v.ideal
+        psActual += v.actual
+      }
+
+      // Product story subtotal
+      const psSubRow = ws.addRow(['', `${ps} — subtotal`, '', '', psIdeal, psActual])
+      for (let col = 1; col <= 6; col++) {
+        const c = psSubRow.getCell(col)
+        cellFill(c, 'FFF5F0E8')
+        c.font = { italic: true }
+      }
+      psSubRow.getCell(2).font = { italic: true, bold: true }
+      psSubRow.getCell(5).font = { italic: true, bold: true }
+      psSubRow.getCell(6).font = { italic: true, bold: true }
+
+      deptIdeal += psIdeal
+      deptActual += psActual
+    }
+
+    // Department total
+    const dTotalRow = ws.addRow([`${dept} — total`, '', '', '', deptIdeal, deptActual])
+    for (let col = 1; col <= 6; col++) {
+      const c = dTotalRow.getCell(col)
+      cellFill(c, 'FFD0E4EC')
+      c.font = { bold: true }
+    }
+
+    ws.addRow([])
+  }
+
+  ws.getColumn(1).width = 20
+  ws.getColumn(2).width = 26
+  ws.getColumn(3).width = 30
+  ws.getColumn(4).width = 8
+  ws.getColumn(5).width = 12
+  ws.getColumn(6).width = 12
 }
 
 function safe(str) {
