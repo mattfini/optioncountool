@@ -1,6 +1,6 @@
 import SearchableSelect from './SearchableSelect'
 
-const PRODUCT_STORY_OPTIONS = ['Product Story 1', 'Product Story 2', 'Cold water', 'Other', 'NA']
+const PRODUCT_STORY_OPTIONS = ['Product Story 1', 'Product Story 2', 'Cold water', 'Destination', 'Other', 'NA']
 
 export default function FixtureRow({ row, fixtureNames, getIdeal, getDeptsForFixture, onChange, onRemove }) {
   const depts = row.fixture_name ? getDeptsForFixture(row.fixture_name) : []
@@ -12,7 +12,8 @@ export default function FixtureRow({ row, fixtureNames, getIdeal, getDeptsForFix
   const actualPer = parseInt(row.actual_options_per_fixture) || 0
   const idealPer = idealVal !== null ? Number(idealVal) : 0
   const idealTotal = qty * idealPer
-  const actualTotal = qty * actualPer
+  // Round up fractional fixture quantities for actual total (e.g. 0.5 fixture = 1 full fixture)
+  const actualTotal = Math.ceil(qty) * actualPer
 
   function handleFixtureChange(name) {
     const newDepts = name ? getDeptsForFixture(name) : []

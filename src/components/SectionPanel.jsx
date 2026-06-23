@@ -6,7 +6,7 @@ function uid() {
 }
 
 function emptyRow() {
-  return { id: uid(), fixture_name: '', department: '', quantity: '', actual_options_per_fixture: '' }
+  return { id: uid(), fixture_name: '', department: '', quantity: '', actual_options_per_fixture: '', product_story: '', product_story_comment: '' }
 }
 
 export default function SectionPanel({ section, sectionNumber, fixtureNames, getIdeal, getDeptsForFixture, onChange, onRemove }) {
@@ -53,18 +53,24 @@ export default function SectionPanel({ section, sectionNumber, fixtureNames, get
       ? (getIdeal(row.fixture_name, row.department) || 0)
       : 0
     idealTotal += qty * idealPer
-    actualTotal += qty * actualPer
+    actualTotal += Math.ceil(qty) * actualPer
   }
   const diff = actualTotal - idealTotal
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-[#ede5d4] mb-4 overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 bg-[#1e3d4a]/5 border-b border-[#ede5d4]">
-        <h3 className="font-semibold text-[#1a2e35] text-base">Section {sectionNumber}</h3>
+      <div className="flex items-center justify-between px-4 py-2.5 bg-[#1e3d4a]/5 border-b border-[#ede5d4]">
+        <input
+          type="text"
+          value={section.label || ''}
+          onChange={e => onChange({ ...section, label: e.target.value })}
+          placeholder={`Section ${sectionNumber}`}
+          className="font-semibold text-[#1a2e35] text-base bg-transparent border-none outline-none focus:ring-0 flex-1 min-w-0 placeholder-[#1a2e35]/50"
+        />
         {onRemove && (
           <button
             onClick={onRemove}
-            className="text-red-400 hover:text-red-600 text-xs font-medium transition-colors"
+            className="text-red-400 hover:text-red-600 text-xs font-medium transition-colors ml-2 flex-shrink-0"
           >
             Remove section
           </button>
