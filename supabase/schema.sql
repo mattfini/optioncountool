@@ -11,7 +11,9 @@ CREATE TABLE IF NOT EXISTS fixture_ideals (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   fixture_name text NOT NULL,
   department text NOT NULL,
-  ideal_options numeric NOT NULL
+  ideal_options numeric,
+  ss_ideal numeric,
+  aw_ideal numeric
 );
 
 CREATE TABLE IF NOT EXISTS option_count_submissions (
@@ -19,7 +21,8 @@ CREATE TABLE IF NOT EXISTS option_count_submissions (
   store_id uuid REFERENCES stores(id),
   submitted_by text NOT NULL,
   submitted_at timestamptz DEFAULT now(),
-  status text DEFAULT 'submitted'
+  status text DEFAULT 'submitted',
+  season text DEFAULT 'SS'
 );
 
 CREATE TABLE IF NOT EXISTS submission_sections (

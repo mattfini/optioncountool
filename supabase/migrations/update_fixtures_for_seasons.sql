@@ -1,25 +1,18 @@
--- Stores
-INSERT INTO stores (name, layout_image_url, layout_image_url_2) VALUES
-('St Agnes',    'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/st-agnes.png',      NULL),
-('Bath',        'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/bath.png',          NULL),
-('Brighton',    'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/brighton.png',      NULL),
-('Bristol',     'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/bristol.png',       NULL),
-('Cambridge',   'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/cambridge.png',     NULL),
-('Cardiff',     'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/cardiff.png',       NULL),
-('Edinburgh',   'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/edinburgh.png',     NULL),
-('Exeter',      'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/exeter.png',        NULL),
-('Falmouth',    'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/falmouth.png',      NULL),
-('Hawksfield',  'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/hawksfield.png',    NULL),
-('Holt',        'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/holt.png',          NULL),
-('London',      'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/london-floor1.png',
-                'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/london-floor2.png'),
-('Poole',       'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/poole-floor1.png',
-                'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/poole-floor2.png'),
-('St Ives',     'https://toowjbgtnkggmgczolhm.supabase.co/storage/v1/object/public/store-layouts/st-ives.png',       NULL),
-('Southwold',   NULL, NULL),
-('Leeds',       NULL, NULL);
+-- Run in Supabase SQL Editor
 
--- Fixture Ideals (SS = Spring/Summer, AW = Autumn/Winter)
+-- 1. Add season columns to fixture_ideals
+ALTER TABLE fixture_ideals ADD COLUMN IF NOT EXISTS ss_ideal numeric;
+ALTER TABLE fixture_ideals ADD COLUMN IF NOT EXISTS aw_ideal numeric;
+
+-- 2. Make ideal_options nullable (was NOT NULL)
+ALTER TABLE fixture_ideals ALTER COLUMN ideal_options DROP NOT NULL;
+
+-- 3. Add season to submissions (defaults to SS for existing records)
+ALTER TABLE option_count_submissions ADD COLUMN IF NOT EXISTS season text DEFAULT 'SS';
+
+-- 4. Replace all fixture ideals with new SS/AW season data
+TRUNCATE fixture_ideals;
+
 INSERT INTO fixture_ideals (fixture_name, department, ss_ideal, aw_ideal) VALUES
 -- Wall fixtures - Mens
 ('2000 Wardrobe Rail with FF',  'Mens', 10, 8),
