@@ -164,6 +164,8 @@ export default function Count() {
     return { ideal, actual }
   }
 
+  const [layoutImgError, setLayoutImgError] = useState({ floor1: false, floor2: false })
+
   const grandTotals = useMemo(() => {
     let ideal = 0, actual = 0
     for (const sec of sections) {
@@ -369,23 +371,33 @@ export default function Count() {
               {store.layout_image_url_2 && (
                 <p className="text-xs text-center text-[#5a7180] pt-2 font-medium">Floor 1</p>
               )}
-              <img
-                src={store.layout_image_url}
-                alt={`${store.name} floor 1 layout`}
-                className="w-full object-contain"
-                style={{ maxHeight: 300 }}
-              />
+              {layoutImgError.floor1 ? (
+                <p className="text-xs text-center text-gray-400 py-6">Layout image unavailable</p>
+              ) : (
+                <img
+                  src={store.layout_image_url}
+                  alt={`${store.name} floor 1 layout`}
+                  className="w-full object-contain"
+                  style={{ maxHeight: 300 }}
+                  onError={() => setLayoutImgError(prev => ({ ...prev, floor1: true }))}
+                />
+              )}
             </>
           )}
           {store.layout_image_url_2 && (
             <>
               <p className="text-xs text-center text-[#5a7180] pt-2 font-medium border-t border-[#ede5d4]">Floor 2</p>
-              <img
-                src={store.layout_image_url_2}
-                alt={`${store.name} floor 2 layout`}
-                className="w-full object-contain"
-                style={{ maxHeight: 300 }}
-              />
+              {layoutImgError.floor2 ? (
+                <p className="text-xs text-center text-gray-400 py-6">Layout image unavailable</p>
+              ) : (
+                <img
+                  src={store.layout_image_url_2}
+                  alt={`${store.name} floor 2 layout`}
+                  className="w-full object-contain"
+                  style={{ maxHeight: 300 }}
+                  onError={() => setLayoutImgError(prev => ({ ...prev, floor2: true }))}
+                />
+              )}
             </>
           )}
         </div>
