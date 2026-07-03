@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import FixtureRow from './FixtureRow'
 
+const PRODUCT_STORY_OPTIONS = ['Product Story 1', 'Product Story 2', 'Cold water', 'Destination', 'Other', 'NA']
+
 function uid() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
 }
 
 function emptyRow() {
-  return { id: uid(), fixture_name: '', department: '', quantity: '', actual_options_per_fixture: '', product_story: '', product_story_comment: '' }
+  return { id: uid(), fixture_name: '', department: '', quantity: '', actual_options_per_fixture: '' }
 }
 
 export default function SectionPanel({ section, sectionNumber, fixtureNames, getIdeal, getDeptsForFixture, onChange, onRemove }) {
@@ -95,6 +97,29 @@ export default function SectionPanel({ section, sectionNumber, fixtureNames, get
         >
           + Add fixture row
         </button>
+      </div>
+
+      <div className="px-3 pb-3">
+        <label className="block text-xs text-[#5a7180] font-medium mb-1">
+          Product Story
+        </label>
+        <select
+          value={section.product_story || ''}
+          onChange={e => onChange({ ...section, product_story: e.target.value, product_story_comment: '' })}
+          className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2d5a6b]"
+        >
+          <option value="">Select product story…</option>
+          {PRODUCT_STORY_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+        </select>
+        {section.product_story === 'Other' && (
+          <input
+            type="text"
+            value={section.product_story_comment || ''}
+            onChange={e => onChange({ ...section, product_story_comment: e.target.value })}
+            placeholder="Please describe…"
+            className="w-full mt-1.5 border border-[#2d5a6b]/40 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5a6b]"
+          />
+        )}
       </div>
 
       <div className="px-3 pb-3">

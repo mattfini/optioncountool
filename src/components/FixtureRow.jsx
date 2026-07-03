@@ -1,7 +1,5 @@
 import SearchableSelect from './SearchableSelect'
 
-const PRODUCT_STORY_OPTIONS = ['Product Story 1', 'Product Story 2', 'Cold water', 'Destination', 'Other', 'NA']
-
 export default function FixtureRow({ row, fixtureNames, getIdeal, getDeptsForFixture, onChange, onRemove }) {
   const depts = row.fixture_name ? getDeptsForFixture(row.fixture_name) : []
   const idealVal = row.fixture_name && row.department
@@ -56,26 +54,6 @@ export default function FixtureRow({ row, fixtureNames, getIdeal, getDeptsForFix
           <option value="">Department…</option>
           {depts.map(d => <option key={d} value={d}>{d}</option>)}
         </select>
-      </div>
-
-      <div className="mb-3">
-        <select
-          value={row.product_story || ''}
-          onChange={e => onChange({ ...row, product_story: e.target.value, product_story_comment: '' })}
-          className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#2d5a6b]"
-        >
-          <option value="">Product Story…</option>
-          {PRODUCT_STORY_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-        </select>
-        {row.product_story === 'Other' && (
-          <input
-            type="text"
-            value={row.product_story_comment || ''}
-            onChange={e => onChange({ ...row, product_story_comment: e.target.value })}
-            placeholder="Please describe…"
-            className="w-full mt-1.5 border border-[#2d5a6b]/40 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5a6b]"
-          />
-        )}
       </div>
 
       <div className="grid grid-cols-2 gap-2 mb-2">
