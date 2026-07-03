@@ -79,27 +79,7 @@ export default function SectionPanel({ section, sectionNumber, fixtureNames, get
         )}
       </div>
 
-      <div className="p-3">
-        {section.fixtures.map(row => (
-          <FixtureRow
-            key={row.id}
-            row={row}
-            fixtureNames={fixtureNames}
-            getIdeal={getIdeal}
-            getDeptsForFixture={getDeptsForFixture}
-            onChange={updated => updateRow(row.id, updated)}
-            onRemove={section.fixtures.length > 1 ? () => removeRow(row.id) : null}
-          />
-        ))}
-        <button
-          onClick={addRow}
-          className="w-full border border-dashed border-[#2d5a6b]/30 text-[#2d5a6b] py-2 rounded-xl text-sm font-medium hover:border-[#2d5a6b]/60 hover:bg-[#2d5a6b]/5 transition-colors mt-1"
-        >
-          + Add fixture row
-        </button>
-      </div>
-
-      <div className="px-3 pb-3">
+      <div className="px-3 pt-3 pb-2">
         <label className="block text-xs text-[#5a7180] font-medium mb-1">
           Product Story
         </label>
@@ -120,6 +100,26 @@ export default function SectionPanel({ section, sectionNumber, fixtureNames, get
             className="w-full mt-1.5 border border-[#2d5a6b]/40 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5a6b]"
           />
         )}
+      </div>
+
+      <div className="p-3">
+        {section.fixtures.map(row => (
+          <FixtureRow
+            key={row.id}
+            row={row}
+            fixtureNames={fixtureNames}
+            getIdeal={getIdeal}
+            getDeptsForFixture={getDeptsForFixture}
+            onChange={updated => updateRow(row.id, updated)}
+            onRemove={section.fixtures.length > 1 ? () => removeRow(row.id) : null}
+          />
+        ))}
+        <button
+          onClick={addRow}
+          className="w-full border border-dashed border-[#2d5a6b]/30 text-[#2d5a6b] py-2 rounded-xl text-sm font-medium hover:border-[#2d5a6b]/60 hover:bg-[#2d5a6b]/5 transition-colors mt-1"
+        >
+          + Add fixture row
+        </button>
       </div>
 
       <div className="px-3 pb-3">
